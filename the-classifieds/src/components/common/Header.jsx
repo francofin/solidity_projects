@@ -152,9 +152,9 @@ const Header = ({ HeaderTwo, headerEight = false,homeNine,dynamic = true }) => {
                         </li>
                         {user ?
                           <li className="has-dropdown">
-                          <Link href="/blog">{`@${user.first_name}`}</Link>
+                         <a>{`@${user.first_name}`}</a>
                           <ul className="submenu">
-                            <li><Link href="/sign-in">Profile</Link></li>
+                            <li><Link href="/profile">Profile</Link></li>
                             <li><Link href="/request-sign-up">Settings</Link></li>
                             <li><Link href="/blog-details">Seller Account</Link></li>
                             <li><a onClick={logoutHandler}>Logout</a></li>

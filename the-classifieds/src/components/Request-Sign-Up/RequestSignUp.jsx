@@ -1,6 +1,7 @@
 
 import Link from 'next/link';
-import {fireBaseAuth} from '@utils/fireBase';
+import {fireBaseAuth} from '@utils/fireBaseUtility';
+import { sendSignInLinkToEmail } from "firebase/auth";
 import React, { useState } from 'react';
 import swal from 'sweetalert';
 import Image from 'next/image';

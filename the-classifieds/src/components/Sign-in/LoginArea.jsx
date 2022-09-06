@@ -4,17 +4,18 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Image from 'next/image';
 import swal from 'sweetalert';
-import {fireBaseAuth, googleAuthProvider, facebookAuthProvider} from '@utils/fireBase';
+import {fireBaseAuth, googleAuthProvider, facebookAuthProvider} from '@utils/fireBaseUtility';
 import { signInWithEmailAndPassword, signInWithPopup, getIdTokenResult, GoogleAuthProvider, FacebookAuthProvider } from "firebase/auth";
 
 const LoginArea = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState(''); 
+  const [loading, setLoading] = useState(false)
 
   const router = useRouter();
-
-  const {loading, user, isAuthenticated, error, login, clearErrors} = useContext(DjangoAuthContext);
+  const auth = fireBaseAuth;
+  const {loading:DjangoLoader, user, isAuthenticated, error, login, clearErrors, dispatch} = useContext(DjangoAuthContext);
   console.log(error)
 
   useEffect(() => {
@@ -36,7 +37,7 @@ const LoginArea = () => {
   const handleOnSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const auth = fireBaseAuth;
+    
     try{
       await signInWithEmailAndPassword(auth, email, password)
       .then( async (result) => {
@@ -45,17 +46,21 @@ const LoginArea = () => {
         dispatch({
           type:'LOGGED_IN_USER',
           payload:{email: user.email, token:idTokenResult.token}
-        });
+      });
+        
+        
       });
 
     } catch (err){
+      console.log(err)
       swal({
         title:"Incorrect details, please review your login Credentials",
         icon: "error"
       })
     }
-    login({username:email, password}); 
-    router.push("/");
+
+    login({username:email, password});
+     
   }
 
 

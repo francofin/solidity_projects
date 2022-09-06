@@ -1,4 +1,4 @@
-import {fireBaseAuth} from '../utils/firebase';
+import {fireBaseAuth} from '@utils/fireBaseUtility';
 import React, {useReducer,useState, createContext, useEffect} from 'react';
 import { onAuthStateChanged, getIdTokenResult  } from "firebase/auth";
 import { useRouter } from 'next/router';
@@ -33,6 +33,7 @@ const DjangoAuthProvider = ({children}) => {
     const [user, setUser] = useState(null)
     const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [error, setError] = useState(null)
+    const [updated, setUpdated] = useState(null)
 
     const router = useRouter();
 
@@ -104,20 +105,55 @@ const DjangoAuthProvider = ({children}) => {
     }
 
 
-    const register = async ({firstName, lastName, password, email, password2}) => {
+    const register = async ({firstName, lastName, password, email, confirmPassword}) => {
         console.log("I ran");
+
+       
         
         try {
-            setLoading(true);
             const res = await axios.post(`${process.env.API_URL}/register/`, 
             {first_name:firstName, last_name:lastName, email, password, password2:confirmPassword});
+
+            console.log(res)
+            setLoading(true);
+            
             if(res.data.message){
                 setLoading(false);
-                router.push("/login");
+                router.push("/sign-in");
             }
         } catch(error){
             setLoading(false);
-            setError(error.response && (error.response.data.detail || error.response.data.error))
+            setError(error.response)
+        }
+    }
+
+
+    const updateUser = async({firstName, lastName, email, password, avatar}, access_token) => {
+        try {
+            setLoading(true);
+
+            const res = await axios.post(`${process.env.API_URL}/updateprofile/`, {
+                first_name:firstName,
+                last_name:lastName,
+                email,
+                password,
+                profile_picture:avatar
+            }, {
+                headers: {
+                    Authorization: `Bearer ${access_token}`
+                },
+            });
+            if(res.data){
+                setLoading(false);
+                setUpdated(true);
+                setUser(res.data);
+                
+            }
+        } catch(err){
+            swal({
+                title: `Error Updating your profile`,
+                icon: "error",
+            });
         }
     }
 
@@ -159,7 +195,10 @@ const DjangoAuthProvider = ({children}) => {
             register,
             clearErrors,
             state,
-            dispatch
+            dispatch,
+            updateUser,
+            setUpdated,
+            updated
         }}>
             {children}
         </DjangoAuthContext.Provider>
