@@ -6,98 +6,100 @@ import {useRouter} from 'next/router';
 import { useDropzone } from "react-dropzone";
 import Resizer from 'react-image-file-resizer';
 import { Row, Col, Form, Button } from "react-bootstrap";
+import 'antd/dist/antd.css';
+import {Badge} from 'antd';
 
+const defaultImage = "images/profile/profile-template.jpg";
 const TabOne = (props) => {
 
-    const {user, loading, logout, updated, clearErrors, updateUser, setUpdated, error} = useContext(DjangoAuthContext);
+    const {user, loading, logout, updated, imageData,
+            clearErrors, updateUser, setUpdated, avatar,
+            error, handleImageUpload, handleImageRemove} = useContext(DjangoAuthContext);
     const [userInfo, setUserInfo] = useState(null);
     const [updateInfo, setUpdateInfo] = useState(false);
     const [firstName, setFirstName] = useState("")
-    const [lastName, setLastName] = useState("")
-    const [avatar, setAvatar] = useState("")
+    const [password, setPassword] = useState("")
+    const [lastName, setLastName] = useState("");
+    const [email, setEmail] = useState("")
+    const [preview, setPreview] = useState(defaultImage);
+    const [userImage, setUserImage] = useState([]);
+    const [profilePictureUrl, setProfilePictureUrl] = useState(null)
+
+    
     const router = useRouter();
     
     useEffect(() => {
-        setUserInfo(user)
+        setUserInfo(user);
+        setFirstName(user?.first_name);
+        setLastName(user?.last_name);
+        setPassword(user?.password);
+        setEmail(user?.email)
         
     }, [user]);
 
     const { getRootProps, getInputProps } = useDropzone({
         accept: "image/*",
         onDrop: (acceptedFiles) => {
-            setAvatar(acceptedFiles.map((file) => {
-                fileResizerAndUpload(file);
+            setUserImage(acceptedFiles.map((file) => {
+                // fileResizerAndUpload(file);
+                
+                setProfilePictureUrl(file);
+                handleImageUpload(file);
                 Object.assign(file, {
                     preview: URL.createObjectURL(file),
                   })
+                  setPreview(file["preview"]);
+                  
                 } 
             ),
           )
         },
       })
-    
 
-    console.log(props)
+
+    
 
     useEffect(() => {
         if(updated){
             setUpdated(false);
             router.push('/profile')  
         }
+        console.log(user?.profile_picture)
     }, [error, user, loading]);
-
 
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        updateUser({firstName, lastName, password, avatar})
+     
+        const formData = new FormData();
+        
+        formData.append("profile_picture_cs", avatar);
+        formData.append("first_name", firstName);
+        formData.append("last_name", lastName);
+        formData.append("email", email);
+        formData.append("password", password);
+        console.log("Avatar", avatar)
+        updateUser(formData, props.access_token)
     }
 
 
-    const fileResizerAndUpload = (file) => {
-        let fileInput = false;
-        // console.log(e.target)
-        console.log(file)
-        if (file) {
-          fileInput = true;
-        }
-        if (fileInput) {
-            Resizer.imageFileResizer(
-              file,
-              300,
-              300,
-              "JPEG",
-              100,
-              0,
-              (uri) => {
-                console.log(uri);
-                setAvatar(uri);
-                // axios.post(`${process.env.REACT_APP_CLOUDINARYUPLOAD_ENDPOINT}/uploadimagestocloudinary`, {image: uri}, {
-                //   headers:{
-                //     authtoken:state.user.token,
-                //   }
-                // }).then((response) => {
-                //   setLoading(false)
-                //   console.log("Cloudingary Upload", response)
-                //   setUserProfile({...userProfile, images:[...userProfile.images, response.data]})
-                //   swal({
-                //     title: `Image Successfully Uploaded`,
-                //     icon: "success",
-                //   });
-                //   console.log(userProfile)
-                // }).catch(error => {
-                //   setLoading(false)
-                //   console.log("Upload to Cloudinary failed", error);
-                //   swal({
-                //     title: `Image Upload Failed, Please try again`,
-                //     icon: "error",
-                //   });
-                // })
-              },
-              "base64",
-            );
-        }
-      }
+
+
+    const removeImage = async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData();
+        
+        formData.append("profile_picture_cs", "");
+        formData.append("first_name", firstName);
+        formData.append("last_name", lastName);
+        formData.append("email", email);
+        formData.append("password", password);
+        console.log("Avatar", avatar)
+        updateUser(formData, props.access_token)
+
+        handleImageRemove()
+    }
 
 
     return(
@@ -108,11 +110,15 @@ const TabOne = (props) => {
                 <div className="row align-items-center">
                     <div className="col-xl-5 col-lg-6">
                         <div className="aboutme-image mb-40">
-                            <img src="images/profile/profile-template.jpg" alt="about-me img" />
+                            <a href="#">
+                                <Badge count='X' onClick={removeImage} />
+                            </a>
+                            <img src={userInfo?.profile_picture_cs ? userInfo.profile_picture_cs : preview} alt="about-me img" />
                         </div>
                         {updateInfo &&
                         <div {...getRootProps({ className: "dropzone dz-clickable" })}>
-                            <input {...getInputProps()} />
+                            <input {...getInputProps()}/>
+                    
                             <div className="dz-message text-muted">
                             <p>Give your Post Life With an image</p>
                             <p>
@@ -153,15 +159,16 @@ const TabOne = (props) => {
                                 <div className="aboutme-feature-list mt-25">
                                     <ul>
                                         <li><p>Current Status:<a href="#"> {userInfo.role}</a></p></li>
-                                        <li><p>User Identification:<a href="#">{`*********${userInfo.user_security_identifier.toString().slice(userInfo.user_security_identifier.length-8)}`}</a></p></li>
+                                        <li><p>User Identification:<a href="#">{`*********${userInfo?.user_security_identifier?.toString().slice(userInfo.user_security_identifier.length-8)}`}</a></p></li>
                                         <li><p>E-mail:<a href="mailto:nerox490@gmail.com">{userInfo.email}</a></p></li>
                                         <li><p>Phone:<a href="tel:507-452-1254"> 507-452-1254</a></p></li>
                                         {updateInfo &&
                                             <div className="sign-input">
                                             <label className="sign-label mb-10">New Phone Number</label>
-                                            <input id='email' value={`Phone Number`} type="email" placeholder="Your Email"/>
+                                            <input id='email' type="number" placeholder="Phone Number"/>
                                             </div>
                                         }
+                                        <li><p>Password:{`*******${password.toString().slice(userInfo.password.length-5)}`}</p></li>
                                 </ul>
                                 </div>
                                 <div className="aboutme-social mt-40">
@@ -175,8 +182,14 @@ const TabOne = (props) => {
                     </div>
                     
                 </div>
+                {updateInfo && 
+                    <div className="defult-sign">
+                        <button type="submit" className="tp-sqbtn-active-2 w-100">Save Updated Info</button>  
+                    </div>
+                    }
                 </form>
-                <div className="defult-sign">
+                <hr/>
+                    <div className="defult-sign">
                         <button type="click" className="tp-sqbtn-active-2 w-100" onClick={(e) => setUpdateInfo(!updateInfo)}>{updateInfo ? "Cancel": "Update Profile"}</button>
                     </div>
                 </div>

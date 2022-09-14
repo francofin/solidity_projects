@@ -2,6 +2,7 @@ import {fireBaseAuth} from '@utils/fireBaseUtility';
 import React, {useReducer,useState, createContext, useEffect} from 'react';
 import { onAuthStateChanged, getIdTokenResult  } from "firebase/auth";
 import { useRouter } from 'next/router';
+import Resizer from 'react-image-file-resizer';
 import axios from 'axios'
 import swal from 'sweetalert';
 
@@ -34,13 +35,16 @@ const DjangoAuthProvider = ({children}) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [error, setError] = useState(null)
     const [updated, setUpdated] = useState(null)
-
+    const [avatar, setAvatar] = useState("")
+    const [userProfile, setUserProfile] = useState(null)
+    const [imageData, setImageData] = useState({})
     const router = useRouter();
 
 
     useEffect(() => {
         if(!user){
             getCurrentUser()
+            getCurrentProfile()
         }
     }, [user])
 
@@ -53,6 +57,7 @@ const DjangoAuthProvider = ({children}) => {
             {username, password});
             if(res.data.success){
                 getCurrentUser()
+                getCurrentProfile()
                 setIsAuthenticated(true);
                 setLoading(false);
                 router.push("/");
@@ -77,6 +82,25 @@ const DjangoAuthProvider = ({children}) => {
             setLoading(false);
             setIsAuthenticated(false);
             setUser(null);
+            setError(error.response && (error.response.data.detail || error.response.data.error))
+        }
+    }
+
+
+    const getCurrentProfile = async () => {
+
+        try {
+            setLoading(true);
+            const res = await axios.get('/api/auth/userprofile');
+            if(res.data.user_profile){
+                setIsAuthenticated(true);
+                setLoading(false);
+                setUserProfile(res.data.user_profile);
+            }
+        } catch(error){
+            setLoading(false);
+            setIsAuthenticated(false);
+            setUserProfile(null);
             setError(error.response && (error.response.data.detail || error.response.data.error))
         }
     }
@@ -128,17 +152,52 @@ const DjangoAuthProvider = ({children}) => {
     }
 
 
-    const updateUser = async({firstName, lastName, email, password, avatar}, access_token) => {
+    const handleImageUpload = async(file) => {
+
+        Resizer.imageFileResizer(file, 720, 500, "JPEG", 100, 0, async(uri) => {
+            try{
+                let {data} = await axios.post('/api/auth/uploadImages', {
+                    image: uri,
+                });
+                console.log(data)
+                //set image in state.and loading to false.
+                setAvatar(await data.Location);
+                setImageData(data);
+            }catch(err){
+                console.log(err);
+                swal({
+                    title:`Failed to Upload Image ${err}`,
+                    icon: "error"
+                  });
+            }
+        })
+    }
+
+
+    const handleImageRemove = async() => {
+        try{
+            const imageKey = user.profile_picture_cs.split("/")[3]
+            await axios.post('/api/auth/removeImages', {imageKey});
+            // console.log(res)
+            console.log(imageKey[3])
+            
+        }catch(err){
+            console.log(err);
+            swal({
+                title:`Failed to Upload Image ${err}`,
+                icon: "error"
+                });
+        }
+    }
+
+
+    const updateUser = async( formData, access_token) => {
         try {
             setLoading(true);
 
-            const res = await axios.post(`${process.env.API_URL}/updateprofile/`, {
-                first_name:firstName,
-                last_name:lastName,
-                email,
-                password,
-                profile_picture:avatar
-            }, {
+            const res = await axios.put(`${process.env.API_URL}/updateprofile/`, 
+                formData
+            , {
                 headers: {
                     Authorization: `Bearer ${access_token}`
                 },
@@ -147,6 +206,10 @@ const DjangoAuthProvider = ({children}) => {
                 setLoading(false);
                 setUpdated(true);
                 setUser(res.data);
+                swal({
+                    title: `Profile Updated`,
+                    icon: "success",
+                });
                 
             }
         } catch(err){
@@ -194,10 +257,16 @@ const DjangoAuthProvider = ({children}) => {
             logout,
             register,
             clearErrors,
+            imageData,
             state,
+            avatar,
+            handleImageUpload,
+            handleImageRemove,
             dispatch,
             updateUser,
             setUpdated,
+            getCurrentProfile,
+            userProfile,
             updated
         }}>
             {children}
